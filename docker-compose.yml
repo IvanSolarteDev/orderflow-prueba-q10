@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orderflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orderflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orderflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-orderflow}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-orderflow}
+    ports:
+      - "15672:15672"   # panel de administración de RabbitMQ
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  orders-api:
+    build:
+      context: .
+      dockerfile: src/Orders.Api/Dockerfile
+    environment:
+      # Cada servicio usa SU PROPIA base de datos dentro del mismo Postgres. EnsureCreated la crea al arrancar.
+      ConnectionStrings__Orders: Host=postgres;Database=orders;Username=${POSTGRES_USER:-orderflow};Password=${POSTGRES_PASSWORD:-orderflow}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER:-orderflow}
+      RabbitMq__Password: ${RABBITMQ_PASS:-orderflow}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  inventory-worker:
+    build:
+      context: .
+      dockerfile: src/Inventory.Worker/Dockerfile
+    environment:
+      ConnectionStrings__Inventory: Host=postgres;Database=inventory;Username=${POSTGRES_USER:-orderflow};Password=${POSTGRES_PASSWORD:-orderflow}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USER:-orderflow}
+      RabbitMq__Password: ${RABBITMQ_PASS:-orderflow}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8080
+    ports:
+      - "3000:80"
+    depends_on:
+      - orders-api
+
+volumes:
+  pgdata:
