@@ -4,7 +4,7 @@ Panel web para registrar pedidos de una tienda en línea y ver su estado. Cada p
 
 Dos servicios .NET se comunican de forma asíncrona por RabbitMQ, y una app React muestra el estado en vivo.
 
-## Cómo correrlo (menos de 10 minutos)
+## Cómo correrlo
 
 **Requisitos:** Docker con Docker Compose. Nada más.
 
@@ -12,7 +12,7 @@ Dos servicios .NET se comunican de forma asíncrona por RabbitMQ, y una app Reac
 docker compose up --build
 ```
 
-La primera vez tarda unos minutos porque descarga imágenes y compila. Cuando termine:
+**Tiempo:** la primera vez puede tardar entre 5 y 15 minutos según tu conexión, porque descarga las imágenes de Docker (cerca de 1.5 GB en total, sobre todo el SDK de .NET) y compila los tres proyectos. Las siguientes veces arranca en menos de un minuto gracias al caché. Cuando termine:
 
 | Qué | URL |
 |---|---|
